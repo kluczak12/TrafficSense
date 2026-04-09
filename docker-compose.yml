@@ -6,6 +6,7 @@ services:
       - video_data:/data/videos
       - frames_data:/data/frames
       - db_data:/data/db
+      - lib:/lib
     environment:
       - VIDEO_DIR=/data/videos
       - FRAMES_DIR=/data/frames
@@ -25,6 +26,7 @@ services:
       - frames_data:/data/frames
       - db_data:/data/db
       - model_data:/data/model
+      - lib:/lib
     environment:
       - FRAMES_DIR=/data/frames
       - DB_PATH=/data/db/pedestrians.db
@@ -72,6 +74,7 @@ volumes:
   video_data: # wideo źródłowe i przesłane przez użytkownika
   frames_data: # wyekstrahowane klatki
   model_data: # wagi i inne elementy sieci neuronowej
+  lib: # dodatkowe moduły Pythona
 
 # zakomentowane healthcheck / depends_on - do zaimplementowania lub zmiany
 # ostatecznie większość volumes jest shared - prościej niż stosować komunikację po sieci

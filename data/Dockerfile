@@ -7,7 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-VOLUME ["/data/videos", "/data/frames", "/data/db"]
+VOLUME ["/data/videos", "/data/frames", "/data/db", "/lib"]
 
 ENV VIDEO_DIR=/data/videos
 ENV FRAMES_DIR=/data/frames
