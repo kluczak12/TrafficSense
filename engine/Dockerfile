@@ -7,7 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-VOLUME ["/data/frames", "/data/db", "/data/model"]
+VOLUME ["/data/frames", "/data/db", "/data/model", "/lib"]
 
 ENV FRAMES_DIR=/data/frames
 ENV DB_PATH=/data/db/pedestrians.db
