@@ -3,16 +3,17 @@ services:
   data:
     build: ./data
     volumes:
-      - video_data:/data/videos
+      - ./data/videos:/data/videos:ro
       - frames_data:/data/frames
       - db_data:/data/db
       - lib:/lib
     environment:
       - VIDEO_DIR=/data/videos
       - FRAMES_DIR=/data/frames
+      - ANNOTATIONS_DIR=/data/videos/annotations
     # healthcheck sprawdza czy ekstrakcja się zakończyła (istnieje plik ".done")
     # healthcheck:
-    #   test: ["CMD", "test", "-f", "/data/frames/.done"]
+    #   test: ["CMD", "test", "-f", "/data/.done"]
     #   interval: 10s
     #   timeout: 5s
     #   retries: 30 # czeka maks. 5 minut na zakończenie ekstrakcji
@@ -42,7 +43,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - video_data:/data/videos
+      - ./data/videos:/data/videos
       - db_data:/data/db
     environment:
       - DB_PATH=/data/db/pedestrians.db
@@ -71,7 +72,6 @@ services:
 
 volumes:
   db_data: # shared volume: SQLite
-  video_data: # wideo źródłowe i przesłane przez użytkownika
   frames_data: # wyekstrahowane klatki
   model_data: # wagi i inne elementy sieci neuronowej
   lib: # dodatkowe moduły Pythona
