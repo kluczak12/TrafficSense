@@ -1,7 +1,9 @@
 # manager bazy danych
+
+import os
 from db import init_db
  
-DB_DIR = os.environ.get("DB_DIR", "data/db")
+DB_DIR = os.environ.get("DB_DIR", "/data/db")
 
 db_path = os.path.join(DB_DIR, "db.sqlite")
  
@@ -12,23 +14,21 @@ init_db(db_path)
 
 # wymagania wstępne:
 # zbiór filmów w data/videos
-# zbiór adnotacji w data/annotations
-
-# UWAGA: kontener strasznie rośnie jak się to włącza docker compose up,
-# trzeba będzie ogarnąć co się dzieje (potencjalnie spytać KP)
+# zbiór adnotacji w data/videos/annotations
 
 from os.path import join, exists
 
-if exists(".done"):
+if exists("/data/.done"):
+    print("Data extraction already done, skipping.")
     exit(0)
 
-import os
 import cv2
 import xml.etree.ElementTree as ET
 
-VIDEO_DIR = os.environ.get("VIDEO_DIR", "data/videos")
-ANNOTATIONS_DIR = os.environ.get("ANNOTATIONS_DIR", "data/videos/annotations")
-FRAMES_DIR = os.environ.get("FRAMES_DIR", "data/frames")
+
+VIDEO_DIR = os.environ.get("VIDEO_DIR", "/data/videos")
+ANNOTATIONS_DIR = os.environ.get("ANNOTATIONS_DIR", "/data/videos/annotations")
+FRAMES_DIR = os.environ.get("FRAMES_DIR", "/data/frames")
 
 videos = [f[:-4] for f in sorted(os.listdir(VIDEO_DIR)) if f.endswith('.mp4')]
 
@@ -60,4 +60,4 @@ for vid in videos[:2]: # na razie 2 pierwsze filmy, do ostatecznego całość
         print(f"Did not extract all frames ({img_count} / {num_frames})")
     print('\n')
 
-open(".done", "w").close()
+open("/data/.done", "w").close()

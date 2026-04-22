@@ -4,16 +4,15 @@ import time
 from ultralytics import YOLO
 
 # ===== SPRWADZENIE YOLO =====
-# FRAMES_DIR = os.environ.get("FRAMES_DIR", "data/frames")
-FRAMES_DIR = "../data/frames/test"
-SAVE_DIR = "../data/id_frames"
+FRAMES_DIR = os.environ.get("FRAMES_DIR", "/data/frames")
 
 model = YOLO("yolov8n.pt")
 frames = sorted(os.listdir(FRAMES_DIR))
 TARGET_FPS = 30
-frame_num = 0
+print(f"Processing {len(frames)} frames from {FRAMES_DIR} at target {TARGET_FPS} FPS.")
 
 for filename in frames:
+    print(f"Processing {filename}...")
     t = time.time()
     
     frame = cv2.imread(os.path.join(FRAMES_DIR, filename))
@@ -46,14 +45,10 @@ for filename in frames:
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-    cv2.imwrite(os.path.join(SAVE_DIR, f"{frame_num:05d}.png"), frame)
-
     # Kontrola FPS
     sleep = (1 / TARGET_FPS) - (time.time() - t)
     if sleep > 0:
         time.sleep(sleep)
-
-    frame_num += 1
 
 cv2.destroyAllWindows()
 
