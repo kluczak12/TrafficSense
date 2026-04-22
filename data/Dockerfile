@@ -6,6 +6,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY costam.py .
+COPY db.py .
 
 VOLUME ["/data/videos", "/data/frames", "/data/db", "/lib"]
 
