@@ -60,4 +60,4 @@ for vid in videos[:2]: # na razie 2 pierwsze filmy, do ostatecznego całość
         print(f"Did not extract all frames ({img_count} / {num_frames})")
     print('\n')
 
-open("/data/.done", "w").close()
+open("/data/frames/.done", "w").close()

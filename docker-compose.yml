@@ -12,12 +12,12 @@ services:
       - FRAMES_DIR=/data/frames
       - ANNOTATIONS_DIR=/data/videos/annotations
     # healthcheck sprawdza czy ekstrakcja się zakończyła (istnieje plik ".done")
-    # healthcheck:
-    #   test: ["CMD", "test", "-f", "/data/.done"]
-    #   interval: 10s
-    #   timeout: 5s
-    #   retries: 30 # czeka maks. 5 minut na zakończenie ekstrakcji
-    #   start_period: 5s
+    healthcheck:
+      test: ["CMD", "test", "-f", "/data/frames/.done"]
+      interval: 10s
+      timeout: 5s
+      retries: 30 # czeka maks. 5 minut na zakończenie ekstrakcji
+      start_period: 5s
     restart: on-failure
 
   # kontener: engine, startuje gdy data spełnił healthcheck
@@ -32,9 +32,9 @@ services:
       - FRAMES_DIR=/data/frames
       - DB_PATH=/data/db/pedestrians.db
       - MODEL_PATH=/data/model
-    # depends_on:
-    #   data:
-    #     condition: service_healthy
+    depends_on:
+      data:
+        condition: service_healthy
     restart: unless-stopped
 
   # kontener: api
