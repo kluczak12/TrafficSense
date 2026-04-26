@@ -5,10 +5,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-COPY . .
-
-VOLUME ["/data/videos", "/data/db"]
-
 ENV DB_PATH=/data/db/pedestrians.db
 ENV VIDEO_DIR=/data/videos
 

@@ -6,51 +6,67 @@ from ultralytics import YOLO
 # ===== SPRWADZENIE YOLO =====
 FRAMES_DIR = os.environ.get("FRAMES_DIR", "/data/frames")
 
-model = YOLO("yolov8n.pt")
-frames = sorted(os.listdir(FRAMES_DIR))
-TARGET_FPS = 30
-print(f"Processing {len(frames)} frames from {FRAMES_DIR} at target {TARGET_FPS} FPS.")
+_model = None
 
-for filename in frames:
-    print(f"Processing {filename}...")
-    t = time.time()
-    
-    frame = cv2.imread(os.path.join(FRAMES_DIR, filename))
-    results = model.track(frame, classes=[0], conf=0.45, persist=True, verbose=False)
-    
-    for box in results[0].boxes:
-        x1, y1, x2, y2 = map(int, box.xyxy[0])
-        conf = float(box.conf[0])
-        tid  = int(box.id[0]) if box.id is not None else -1
+def get_model():
+    global _model
+    if _model is None:
+        _model = YOLO("yolov8n.pt")
+    return _model
 
-        # Box
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 220, 0), 2)
+
+def detect_pedestrians(frame, conf=0.45):
+    model = get_model()
+    results = model.track(frame, classes=[0], conf=conf, persist=True, verbose=False)
+    return results
+
+
+if __name__ == "__main__":
+    TARGET_FPS = 30
+    model = get_model()
+    frames = sorted(os.listdir(FRAMES_DIR))
+    print(f"Processing {len(frames)} frames from {FRAMES_DIR} at target {TARGET_FPS} FPS.")
+
+    for filename in frames:
+        print(f"Processing {filename}...")
+        t = time.time()
         
-        # Półprzezroczyste wypełnienie
-        overlay = frame.copy()
-        cv2.rectangle(overlay, (x1, y1), (x2, y2), (0, 220, 0), -1)
-        cv2.addWeighted(overlay, 0.1, frame, 0.9, 0, frame)
+        frame = cv2.imread(os.path.join(FRAMES_DIR, filename))
+        results = detect_pedestrians(frame)
         
-        # Etykieta
-        label = f"#{tid} {conf:.0%}"
-        cv2.putText(frame, label, (x1, y1 - 8),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 220, 0), 2)
+        for box in results[0].boxes:
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            conf = float(box.conf[0])
+            tid  = int(box.id[0]) if box.id is not None else -1
 
-    # Licznik pieszych
-    count = len(results[0].boxes)
-    cv2.putText(frame, f"Pieszych: {count}", (15, 35),
-                cv2.FONT_HERSHEY_SIMPLEX, 1.1, (255, 255, 255), 3)
+            # Box
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 220, 0), 2)
+            
+            # Półprzezroczyste wypełnienie
+            overlay = frame.copy()
+            cv2.rectangle(overlay, (x1, y1), (x2, y2), (0, 220, 0), -1)
+            cv2.addWeighted(overlay, 0.1, frame, 0.9, 0, frame)
+            
+            # Etykieta
+            label = f"#{tid} {conf:.0%}"
+            cv2.putText(frame, label, (x1, y1 - 8),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 220, 0), 2)
 
-    cv2.imshow("Pedestrian Detection", frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+        # Licznik pieszych
+        count = len(results[0].boxes)
+        cv2.putText(frame, f"Pieszych: {count}", (15, 35),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.1, (255, 255, 255), 3)
 
-    # Kontrola FPS
-    sleep = (1 / TARGET_FPS) - (time.time() - t)
-    if sleep > 0:
-        time.sleep(sleep)
+        cv2.imshow("Pedestrian Detection", frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
-cv2.destroyAllWindows()
+        # Kontrola FPS
+        sleep = (1 / TARGET_FPS) - (time.time() - t)
+        if sleep > 0:
+            time.sleep(sleep)
+
+    cv2.destroyAllWindows()
 
 
 

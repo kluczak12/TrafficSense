@@ -1,6 +1,7 @@
 # manager bazy danych
 
 import os
+import time
 from db import init_db
  
 DB_DIR = os.environ.get("DB_DIR", "/data/db")
@@ -18,7 +19,7 @@ init_db(db_path)
 
 from os.path import join, exists
 
-if exists("/data/.done"):
+if exists("/data/frames/.done"):
     print("Data extraction already done, skipping.")
     exit(0)
 

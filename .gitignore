@@ -3,10 +3,8 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
-data/frames/test
-
-
-/data/videos
+data/videos/
+output_videos/
 
 # User-specific files
 *.rsuser
