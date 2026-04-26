@@ -13,6 +13,8 @@ output_videos/
 *.userosscache
 *.sln.docstates
 *.env
+*.pt
+data/id_frames/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
