@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 
@@ -21,5 +21,6 @@ COPY prediction.py .
 ENV FRAMES_DIR=/data/frames
 ENV DB_PATH=/data/db/pedestrians.db
 ENV OUTPUT_DIR=/app/output_videos
+ENV YOLO_CONFIG_DIR=/tmp
 
 CMD ["python3", "prediction.py"]

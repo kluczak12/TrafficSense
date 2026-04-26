@@ -4,6 +4,9 @@ import os
 import time
 from db import init_db
  
+VIDEO_DIR = os.environ.get("VIDEO_DIR", "/data/videos")
+ANNOTATIONS_DIR = os.environ.get("ANNOTATIONS_DIR", "/data/videos/annotations")
+FRAMES_DIR = os.environ.get("FRAMES_DIR", "/data/frames")
 DB_DIR = os.environ.get("DB_DIR", "/data/db")
 
 db_path = os.path.join(DB_DIR, "db.sqlite")
@@ -19,17 +22,12 @@ init_db(db_path)
 
 from os.path import join, exists
 
-if exists("/data/frames/.done"):
+if exists(join(FRAMES_DIR, ".done")):
     print("Data extraction already done, skipping.")
     exit(0)
 
 import cv2
 import xml.etree.ElementTree as ET
-
-
-VIDEO_DIR = os.environ.get("VIDEO_DIR", "/data/videos")
-ANNOTATIONS_DIR = os.environ.get("ANNOTATIONS_DIR", "/data/videos/annotations")
-FRAMES_DIR = os.environ.get("FRAMES_DIR", "/data/frames")
 
 videos = [f[:-4] for f in sorted(os.listdir(VIDEO_DIR)) if f.endswith('.mp4')]
 

@@ -4,13 +4,11 @@ import sys
 import time
 import numpy as np
 from collections import defaultdict, deque
-#from ultralytics import YOLO
 sys.path.insert(0, os.path.dirname(__file__))
 from identificationOfPedestrians import detect_pedestrians
 
 
 FRAMES_DIR = os.environ.get("FRAMES_DIR", "/data/frames")
-MODEL_PATH = os.environ.get("MODEL_PATH", "yolov8n.pt")
 TARGET_FPS = int(os.environ.get("TARGET_FPS", "30"))
 PRED_HORIZON = int(os.environ.get("PRED_HORIZON", "10"))
 HISTORY_LEN = int(os.environ.get("HISTORY_LEN", "10"))
