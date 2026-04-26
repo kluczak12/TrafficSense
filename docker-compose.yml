@@ -3,48 +3,30 @@ services:
   data:
     build: ./data
     volumes:
-      - video_data:/data/videos
+      - ./data/videos:/data/videos:ro
       - frames_data:/data/frames
       - db_data:/data/db
-    environment:
-      - VIDEO_DIR=/data/videos
-      - FRAMES_DIR=/data/frames
-    # healthcheck sprawdza czy ekstrakcja się zakończyła (istnieje plik ".done")
-    # healthcheck:
-    #   test: ["CMD", "test", "-f", "/data/frames/.done"]
-    #   interval: 10s
-    #   timeout: 5s
-    #   retries: 30 # czeka maks. 5 minut na zakończenie ekstrakcji
-    #   start_period: 5s
+      - ./lib:/app/lib
     restart: on-failure
 
-  # kontener: engine, startuje gdy data spełnił healthcheck
   engine:
     build: ./engine
     volumes:
       - frames_data:/data/frames
       - db_data:/data/db
-      - model_data:/data/model
-    environment:
-      - FRAMES_DIR=/data/frames
-      - DB_PATH=/data/db/pedestrians.db
-      - MODEL_PATH=/data/model
-    # depends_on:
-    #   data:
-    #     condition: service_healthy
-    restart: unless-stopped
+      - ./lib:/app/lib
+      - ./output_videos:/app/output_videos
+    restart: on-failure # na razie tak, potem unless-stopped
 
-  # kontener: api
-  api:
-    build: ./api
-    ports:
-      - "8000:8000"
-    volumes:
-      - video_data:/data/videos
-      - db_data:/data/db
-    environment:
-      - DB_PATH=/data/db/pedestrians.db
-      - VIDEO_DIR=/data/videos
+  # healthchecki i depends_on poniżej będą miały akurat sens
+  # na razie nie ma sensu włączać (czemu nie zakomentowaliśmy wcześniej lol)
+  # api:
+  #   build: ./api
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - ./data/videos:/data/videos
+  #     - db_data:/data/db
     # depends_on:
     #   - engine
     # healthcheck:
@@ -53,26 +35,18 @@ services:
     #   timeout: 5s
     #   retries: 5
     #   start_period: 5s
-    restart: unless-stopped
+    # restart: unless-stopped
 
   # kontener: frontend, startuje gdy api odpowiada
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    environment:
-      - API_URL=http://api:8000
+  # frontend:
+  #   build: ./frontend
+  #   ports:
+  #     - "3000:3000"
     # depends_on:
     #   api:
     #     condition: service_healthy
-    restart: unless-stopped
+    # restart: unless-stopped
 
 volumes:
   db_data: # shared volume: SQLite
-  video_data: # wideo źródłowe i przesłane przez użytkownika
-  frames_data: # wyekstrahowane klatki
-  model_data: # wagi i inne elementy sieci neuronowej
-
-# zakomentowane healthcheck / depends_on - do zaimplementowania lub zmiany
-# ostatecznie większość volumes jest shared - prościej niż stosować komunikację po sieci
-# to zostawmy api + frontendowi
+  frames_data: # shared volume: wyekstrahowane klatki
