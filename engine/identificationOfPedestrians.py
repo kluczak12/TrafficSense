@@ -1,5 +1,7 @@
 import hashlib
 import os
+
+import urllib
 import cv2
 import time
 from ultralytics import YOLO
@@ -30,6 +32,8 @@ def verify_model(path):
         raise ValueError(f"Hash variable for model not found.")
     # @TODO exception handling
     actual = compute_sha256(path)
+    if actual is None:
+        raise RuntimeError(f"Could not find YOLO model file. Aborting.")
     if actual != expected:
         raise RuntimeError(
             f"Hash mismatch for YOLO model. The file may have been replaced. Aborting."
