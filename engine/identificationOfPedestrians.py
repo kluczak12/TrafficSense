@@ -1,3 +1,4 @@
+import hashlib
 import os
 import cv2
 import time
@@ -5,6 +6,7 @@ from ultralytics import YOLO
 
 # ===== SPRWADZENIE YOLO =====
 FRAMES_DIR = os.environ.get("FRAMES_DIR", "/data/frames")
+EXPECTED_MODEL_HASH = os.environ.get("EXPECTED_MODEL_HASH")
 
 _model = None
 
@@ -12,8 +14,27 @@ def get_model():
     global _model
     if _model is None:
         _model = YOLO("yolov8n.pt")
+        verify_model("yolov8n.pt")
     return _model
 
+def compute_sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(1_048_576): # 1 MiB
+            h.update(chunk)
+    return h.hexdigest()
+
+def verify_model(path):
+    expected = str(EXPECTED_MODEL_HASH)
+    if expected is None:
+        raise ValueError(f"Hash variable for model not found.")
+    # @TODO exception handling
+    actual = compute_sha256(path)
+    if actual != expected:
+        raise RuntimeError(
+            f"Hash mismatch for YOLO model. The file may have been replaced. Aborting."
+        )
+    print(f"YOLO model verified correctly.")
 
 def detect_pedestrians(frame, conf=0.45):
     model = get_model()
