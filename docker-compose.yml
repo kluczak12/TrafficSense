@@ -17,6 +17,8 @@ services:
       - ./lib:/app/lib
       - ./output_videos:/app/output_videos
     restart: on-failure # na razie tak, potem unless-stopped
+    environment:
+      - EXPECTED_MODEL_HASH=f59b3d833e2ff32e194b5bb8e08d211dc7c5bdf144b90d2c8412c47ccfc83b36
 
   # healthchecki i depends_on poniżej będą miały akurat sens
   # na razie nie ma sensu włączać (czemu nie zakomentowaliśmy wcześniej lol)
