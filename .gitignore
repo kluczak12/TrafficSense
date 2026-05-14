@@ -4,6 +4,11 @@
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
 data/videos/
+data/annotations
+data/annotations_appearance
+data/annotations_attributes
+data/annotations_traffic
+data/annotations_vehicle
 output_videos/
 
 # User-specific files

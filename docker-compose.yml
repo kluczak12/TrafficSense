@@ -4,6 +4,7 @@ services:
     build: ./data
     volumes:
       - ./data/videos:/data/videos:ro
+      - ./data/annotations:/data/annotations:ro
       - frames_data:/data/frames
       - db_data:/data/db
       - ./lib:/app/lib
@@ -12,6 +13,9 @@ services:
   engine:
     build: ./engine
     volumes:
+      - ./data/annotations:/data/annotations:ro
+      - ./data/annotations_traffic:/data/annotations_traffic:ro
+      - ./data/annotations_vehicle:/data/annotations_vehicle:ro
       - frames_data:/data/frames
       - db_data:/data/db
       - ./lib:/app/lib

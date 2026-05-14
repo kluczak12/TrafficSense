@@ -6,7 +6,7 @@ import cv2
 import time
 from ultralytics import YOLO
 
-# ===== SPRWADZENIE YOLO =====
+# ===== SPRAWDZENIE YOLO =====
 FRAMES_DIR = os.environ.get("FRAMES_DIR", "/data/frames")
 EXPECTED_MODEL_HASH = os.environ.get("EXPECTED_MODEL_HASH")
 
