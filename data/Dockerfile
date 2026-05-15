@@ -1,4 +1,4 @@
-FROM python:3.14-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ COPY costam.py .
 COPY db.py .
 
 ENV VIDEO_DIR=/data/videos
-ENV ANNOTATIONS_DIR=/data/videos/annotations
+ENV ANNOTATIONS_DIR=/data/annotations
 ENV FRAMES_DIR=/data/frames
 
 CMD ["python3", "costam.py"]
