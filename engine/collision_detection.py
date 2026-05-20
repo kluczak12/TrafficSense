@@ -122,7 +122,7 @@ class TrapezoidZone:
 
 
 class CollisionDetector:
-    def __init__(self, frame_height, frame_width, vehicle_zone_type='trapez_lower',
+    def __init__(self, frame_height, frame_width,
                  warning_distance=350, collision_threshold=0.3):
         self.frame_height = frame_height
         self.frame_width = frame_width
