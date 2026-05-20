@@ -17,12 +17,12 @@ RUN pip install -r requirements.txt
 
 COPY annotation_loader.py .
 COPY collision_detection.py .
-COPY identificationOfPedestrians.py .
-COPY prediction.py .
+COPY pedestrian_detection.py .
+COPY video_processor.py .
 
 ENV FRAMES_DIR=/data/frames
 ENV DB_PATH=/data/db/pedestrians.db
 ENV OUTPUT_DIR=/app/output_videos
 ENV YOLO_CONFIG_DIR=/tmp
 
-CMD ["python3", "prediction.py"]
+CMD ["python3", "video_processor.py"]
