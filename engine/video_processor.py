@@ -6,7 +6,7 @@ import time
 import numpy as np
 from collections import defaultdict, deque
 sys.path.insert(0, os.path.dirname(__file__))
-from identificationOfPedestrians import detect_pedestrians
+from pedestrian_detection import detect_pedestrians
 from collision_detection import CollisionDetector
 from annotation_loader import AnnotationManager
 

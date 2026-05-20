@@ -7,7 +7,6 @@ services:
       - ./data/annotations:/data/annotations:ro
       - frames_data:/data/frames
       - db_data:/data/db
-      - ./lib:/app/lib
     restart: on-failure
 
   engine:
@@ -18,40 +17,16 @@ services:
       - ./data/annotations_vehicle:/data/annotations_vehicle:ro
       - frames_data:/data/frames
       - db_data:/data/db
-      - ./lib:/app/lib
       - ./output_videos:/app/output_videos
     restart: on-failure # na razie tak, potem unless-stopped
     environment:
       - EXPECTED_MODEL_HASH=f59b3d833e2ff32e194b5bb8e08d211dc7c5bdf144b90d2c8412c47ccfc83b36
 
-  # healthchecki i depends_on poniżej będą miały akurat sens
-  # na razie nie ma sensu włączać (czemu nie zakomentowaliśmy wcześniej lol)
-  # api:
-  #   build: ./api
-  #   ports:
-  #     - "8000:8000"
-  #   volumes:
-  #     - ./data/videos:/data/videos
-  #     - db_data:/data/db
-    # depends_on:
-    #   - engine
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-    #   interval: 10s
-    #   timeout: 5s
-    #   retries: 5
-    #   start_period: 5s
-    # restart: unless-stopped
-
-  # kontener: frontend, startuje gdy api odpowiada
   # frontend:
   #   build: ./frontend
   #   ports:
   #     - "3000:3000"
-    # depends_on:
-    #   api:
-    #     condition: service_healthy
-    # restart: unless-stopped
+  #   restart: unless-stopped
 
 volumes:
   db_data: # shared volume: SQLite
