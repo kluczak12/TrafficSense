@@ -5,8 +5,10 @@ class AnnotationManager:
     def __init__(self, db_path):
         self._db_path = db_path
         self._conn = None
-        self._env = {} # video_id -> env_mult
-        self._frames = {} # video_id -> {frame_id -> row dict}
+        self._env = {}  # video_id -> env_mult
+        self._weather = {}  # video_id -> weather
+        self._location = {}  # video_id -> location
+        self._frames = {}  # video_id -> {frame_id -> row dict}
         self._loaded = set() # video_ids których klatki zostały już załadowane
 
     def _connect(self):
@@ -23,9 +25,17 @@ class AnnotationManager:
         conn = self._connect()
 
         row = conn.execute(
-            "SELECT env_mult FROM video_env WHERE video_id = ?", (video_id,),
+            "SELECT env_mult, weather, location FROM video_env WHERE video_id = ?",
+            (video_id,),
         ).fetchone()
-        self._env[video_id] = row["env_mult"] if row else 1.0
+        if row:
+            self._env[video_id] = row["env_mult"]
+            self._weather[video_id] = row["weather"] or "unknown"
+            self._location[video_id] = row["location"] or "unknown"
+        else:
+            self._env[video_id] = 1.0
+            self._weather[video_id] = "unknown"
+            self._location[video_id] = "unknown"
 
         frames = {}
         for r in conn.execute(
@@ -60,3 +70,10 @@ class AnnotationManager:
             mult *= 1.2
 
         return mult
+
+    def log_description(self, video_id):
+        if video_id not in self._loaded:
+            self.load(video_id)
+        weather = self._weather.get(video_id, "unknown")
+        location = self._location.get(video_id, "unknown")
+        return f"Weather: {weather}, Location: {location}"

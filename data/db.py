@@ -42,7 +42,7 @@ def init_db(db_path):
             (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 date TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
-                type TEXT NOT NULL,           -- na razie przewidziane 'warning' i 'critical'
+                type TEXT NOT NULL,
                 description TEXT NOT NULL
             )
         """)
@@ -51,9 +51,12 @@ def init_db(db_path):
             CREATE TABLE IF NOT EXISTS video_env
             (
                 video_id TEXT PRIMARY KEY,
-                env_mult REAL NOT NULL DEFAULT 1.0
+                env_mult REAL NOT NULL DEFAULT 1.0,
+                weather TEXT,
+                location TEXT
             )
         """)
+        _ensure_video_env_columns(conn)
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS frame_annotations
@@ -68,3 +71,11 @@ def init_db(db_path):
                 PRIMARY KEY (video_id, frame_id)
             )
         """)
+
+
+def _ensure_video_env_columns(conn):
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(video_env)")}
+    if "weather" not in cols:
+        conn.execute("ALTER TABLE video_env ADD COLUMN weather TEXT")
+    if "location" not in cols:
+        conn.execute("ALTER TABLE video_env ADD COLUMN location TEXT")

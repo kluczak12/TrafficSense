@@ -4,9 +4,9 @@
 # ten serwer <-> engine: JSON + klatki JPEG w postaci binarnej
 
 import asyncio
-import base64
 import json
 import os
+import sqlite3
 import time
 
 import cv2
@@ -16,6 +16,7 @@ from fastapi.responses import FileResponse
 
 VIDEO_DIR = os.environ.get("VIDEO_DIR", "/data/videos")
 ENGINE_WS = os.environ.get("ENGINE_WS", "ws://engine:8000/ws")
+ANNOTATIONS_DB = os.environ.get("ANNOTATIONS_DB", "/data/db/db.sqlite")
 FRAME_MAX_WIDTH = int(os.environ.get("FRAME_MAX_WIDTH", "1600"))
 FRONTEND_JPEG_QUALITY = int(os.environ.get("FRONTEND_JPEG_QUALITY", "80"))
 MAX_IN_FLIGHT = int(os.environ.get("MAX_IN_FLIGHT", "2"))
@@ -26,7 +27,14 @@ app = FastAPI()
 
 @app.get("/")
 def index():
-    return FileResponse(os.path.join(os.path.dirname(__file__), "index.html"))
+    return FileResponse(
+        os.path.join(os.path.dirname(__file__), "index.html"),
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 
 @app.get("/videos")
@@ -34,6 +42,18 @@ def list_videos():
     if not os.path.isdir(VIDEO_DIR):
         return {"videos": []}
     return {"videos": sorted(f for f in os.listdir(VIDEO_DIR) if f.endswith(".mp4"))}
+
+
+@app.get("/logs")
+def list_logs():
+    if not os.path.isfile(ANNOTATIONS_DB):
+        return {"logs": []}
+    with sqlite3.connect(ANNOTATIONS_DB) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            "SELECT id, date, type, description FROM critical_events_logs ORDER BY id DESC"
+        ).fetchall()
+    return {"logs": [dict(row) for row in rows]}
 
 
 async def _stream_video(video_name, browser_ws, engine_ws, stop_event):
