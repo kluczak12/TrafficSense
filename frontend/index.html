@@ -4,26 +4,135 @@
 <meta charset="utf-8">
 <title>TrafficSense</title>
 <style>
-  body { margin: 0; font-family: system-ui, sans-serif; background: #111; color: #eee; }
-  header { padding: 12px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; background: #1b1b1b; }
-  header label { display: flex; align-items: center; gap: 6px; }
-  select, button { font: inherit; padding: 6px 12px; border-radius: 4px; border: 1px solid #444; background: #222; color: #eee; }
+  :root {
+    --bg: #111;
+    --panel: #161616;
+    --panel2: #1b1b1b;
+    --text: #eee;
+    --muted: #aaa;
+    --border: #333;
+    --control: #222;
+    --control-border: #444;
+    --shadow: 0 12px 40px rgba(0,0,0,0.55);
+    --sidebar-w: 340px;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
+
+  .layout { position: relative; width: 100vw; height: 100vh; }
+
+  .sidebar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: var(--sidebar-w);
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    transform: translateX(0);
+    transition: transform 180ms ease;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow);
+  }
+  .sidebar.collapsed { transform: translateX(calc(-1 * var(--sidebar-w))); }
+
+  .side-header {
+    padding: 12px 12px 10px;
+    background: var(--panel2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .brand { font-weight: 650; letter-spacing: 0.2px; }
+  .spacer { flex: 1; }
+  #status { font-size: 0.9em; color: var(--muted); }
+
+  .side-body { padding: 12px; display: grid; gap: 12px; overflow: auto; }
+  .row { display: grid; gap: 8px; }
+  .row label { display: flex; align-items: center; gap: 8px; color: var(--text); }
+
+  select, button {
+    font: inherit;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--control-border);
+    background: var(--control);
+    color: var(--text);
+    width: 100%;
+  }
   button { cursor: pointer; }
-  button:disabled { opacity: 0.5; cursor: default; }
-  #status { margin-left: auto; font-size: 0.9em; color: #aaa; }
-  main { display: flex; justify-content: center; align-items: center; height: calc(100vh - 56px); }
-  #frame { max-width: 100%; max-height: 100%; background: #000; }
+  button:disabled { opacity: 0.55; cursor: default; }
+  .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .side-footer {
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.85em;
+  }
+
+  .panel-toggle {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    z-index: 20;
+    border-radius: 10px;
+    padding: 9px 12px;
+    width: auto;
+    background: rgba(34,34,34,0.75);
+    border: 1px solid rgba(255,255,255,0.12);
+    backdrop-filter: blur(10px);
+  }
+  .panel-toggle.hidden { display: none; }
+
+  main {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #000;
+  }
+  #frame {
+    max-width: 100%;
+    max-height: 100%;
+    background: #000;
+    object-fit: contain;
+  }
 </style>
 </head>
 <body>
-<header>
-  <select id="video"></select>
-  <button id="start">Start</button>
-  <button id="stop" disabled>Stop</button>
-  <label><input type="checkbox" id="autoplay"> Autoplay</label>
-  <span id="status">disconnected</span>
-</header>
-<main><img id="frame" alt=""></main>
+<div class="layout">
+  <button id="panelToggle" class="panel-toggle hidden" type="button">Menu</button>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="side-header">
+      <div class="brand">TrafficSense</div>
+      <div class="spacer"></div>
+      <span id="status">disconnected</span>
+      <button id="hidePanel" type="button" style="width:auto;">Hide</button>
+    </div>
+    <div class="side-body">
+      <div class="row">
+        <div style="color: var(--muted); font-size: 0.9em;">Video</div>
+        <select id="video"></select>
+      </div>
+      <div class="btn-row">
+        <button id="start" type="button">Start</button>
+        <button id="stop" type="button" disabled>Stop</button>
+      </div>
+      <div class="row">
+        <label><input type="checkbox" id="autoplay"> Autoplay</label>
+      </div>
+    </div>
+  </aside>
+
+  <main><img id="frame" alt=""></main>
+</div>
 
 <script>
 const videoSel = document.getElementById("video");
@@ -32,6 +141,9 @@ const stopBtn  = document.getElementById("stop");
 const autoplay = document.getElementById("autoplay");
 const statusEl = document.getElementById("status");
 const frameEl  = document.getElementById("frame");
+const sidebar  = document.getElementById("sidebar");
+const hidePanelBtn = document.getElementById("hidePanel");
+const panelToggleBtn = document.getElementById("panelToggle");
 
 let ws = null;
 
@@ -41,6 +153,18 @@ function setPlaying(p) {
   stopBtn.disabled = !p;
   videoSel.disabled = p;
 }
+
+function setSidebarCollapsed(collapsed) {
+  if (collapsed) {
+    sidebar.classList.add("collapsed");
+    panelToggleBtn.classList.remove("hidden");
+  } else {
+    sidebar.classList.remove("collapsed");
+    panelToggleBtn.classList.add("hidden");
+  }
+}
+hidePanelBtn.onclick = () => setSidebarCollapsed(true);
+panelToggleBtn.onclick = () => setSidebarCollapsed(false);
 
 async function loadVideos() {
   const r = await fetch("/videos");
@@ -60,6 +184,12 @@ async function loadVideos() {
   }
 }
 
+function safeSend(obj) {
+  if (!ws || ws.readyState !== 1) return false;
+  ws.send(JSON.stringify(obj));
+  return true;
+}
+
 function connect() {
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
   ws = new WebSocket(`${proto}//${location.host}/ws`);
@@ -74,18 +204,35 @@ function connect() {
       frameEl.src = lastBlobUrl;
       return;
     }
+
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg?.type === "started" && msg.video) {
+        setStatus(`playing: ${msg.video}`);
+        if (videoSel.value !== msg.video) videoSel.value = msg.video;
+      }
+      if (msg?.type === "ended") {
+        setStatus(`ended: ${msg.video || ""}`.trim());
+        if (!autoplay.checked) {
+          stopBtn.onclick();
+        }
+      }
+      if (msg?.type === "error") {
+        setStatus(`error: ${msg.message || "unknown"}`);
+      }
+    } catch (_) {
+    }
   };
 }
 
 startBtn.onclick = () => {
-  if (!ws || ws.readyState !== 1) return;
-  ws.send(JSON.stringify({ action: "start", video: videoSel.value, autoplay: autoplay.checked }));
+  if (!safeSend({ action: "start", video: videoSel.value, autoplay: autoplay.checked })) return;
   setPlaying(true);
 };
 stopBtn.onclick = () => {
-  if (!ws || ws.readyState !== 1) return;
-  ws.send(JSON.stringify({ action: "stop" }));
+  if (!safeSend({ action: "stop" })) return;
   setPlaying(false);
+  setStatus("stopped");
 };
 
 loadVideos();

@@ -36,6 +36,13 @@ def _warmup():
     # on startup, aby nie generować opóźnień
     from pedestrian_detection import get_model
     get_model()
+    try:
+        from pedestrian_detection import detect_pedestrians
+        import numpy as _np
+        dummy = _np.zeros((640, 640, 3), dtype=_np.uint8)
+        detect_pedestrians(dummy)
+    except Exception:
+        pass
 
 
 def _center(b):
@@ -104,8 +111,6 @@ def _annotate(frame, frame_id, video_id, track_history, collision_detector):
                 if info:
                     collision_detector.draw_collision_alert(frame, info)
 
-    cv2.putText(frame, f"Pieszych: {count}", (15, 35),
-                cv2.FONT_HERSHEY_SIMPLEX, 1.1, (255, 255, 255), 3)
     return frame
 
 

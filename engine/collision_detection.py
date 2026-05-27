@@ -76,40 +76,32 @@ class PerspectiveCalculator:
 
 
 class TrapezoidZone:
-    # Strefa pojazdu w kształcie trapezu (perspektywa drogi)
     def __init__(self, frame_height, frame_width):
         self.frame_height = frame_height
         self.frame_width = frame_width
         self.points = np.array([
-            [int(frame_width * 0.20), frame_height],
-            [int(frame_width * 0.80), frame_height],
-            [int(frame_width * 0.65), int(frame_height * 0.5)],
-            [int(frame_width * 0.35), int(frame_height * 0.5)],
+            [int(frame_width * 0.05), frame_height],
+            [int(frame_width * 0.95), frame_height],
+            [int(frame_width * 0.7), int(frame_height * 0.65)],
+            [int(frame_width * 0.3), int(frame_height * 0.65)],
         ], dtype=np.int32)
 
-    def distance_to_zone(self, x, y):
-        if self.point_in_trapezoid(x, y):
-            return 0
-        vertical_dist = abs(y - self.frame_height)
-        # kara za bycie blisko środka drogi
-        center_x = self.frame_width / 2
-        horizontal_dist = abs(x - center_x)
-        return vertical_dist + 0.3 * horizontal_dist
-
     def point_in_trapezoid(self, x, y):
-        pts = self.points
+        result = cv2.pointPolygonTest(self.points, (float(x), float(y)), measureDist=False)
+        return result >= 0
 
-        def sign(p1, p2, p3):
-            return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
+    def bbox_overlaps_trapezoid(self, x1, y1, x2, y2):
+        for px, py in [(x1, y1), (x2, y1), (x2, y2), (x1, y2)]:
+            if self.point_in_trapezoid(px, py):
+                return True
+        box_poly = np.array([[x1, y1], [x2, y1], [x2, y2], [x1, y2]], dtype=np.float32)
+        trap_poly = self.points.astype(np.float32)
+        retval, _ = cv2.intersectConvexConvex(box_poly, trap_poly)
+        return retval > 0
 
-        p = [x, y]
-        d1 = sign(p, pts[0], pts[1])
-        d2 = sign(p, pts[1], pts[2])
-        d3 = sign(p, pts[2], pts[3])
-        d4 = sign(p, pts[3], pts[0])
-        has_neg = (d1 < 0) or (d2 < 0) or (d3 < 0) or (d4 < 0)
-        has_pos = (d1 > 0) or (d2 > 0) or (d3 > 0) or (d4 > 0)
-        return not (has_neg and has_pos)
+    def distance_to_zone(self, x, y):
+        dist = cv2.pointPolygonTest(self.points, (float(x), float(y)), measureDist=True)
+        return 0.0 if dist >= 0 else float(abs(dist))
 
     def get_trapezoid_points(self):
         return self.points
@@ -151,45 +143,54 @@ class CollisionDetector:
             }
 
         self.pedestrian_history[pedestrian_id]['positions'].append(current_pos)
-        if bbox: self.pedestrian_history[pedestrian_id]['bboxes'].append(bbox)
+        if bbox:
+            self.pedestrian_history[pedestrian_id]['bboxes'].append(bbox)
 
         history = list(self.pedestrian_history[pedestrian_id]['positions'])
-        
+
         perspective_distance = self.perspective_calc.estimate_distance_from_perspective(bbox)
-        is_inside = self.vehicle_zone.point_in_trapezoid(current_pos[0], current_pos[1])
-        is_approaching, approach_rate = self.motion_analyzer.is_moving_toward_vehicle_zone(history, self.vehicle_zone)
+
+        x1, y1, x2, y2 = bbox if bbox else (0, 0, 0, 0)
+        bbox_in_zone = self.vehicle_zone.bbox_overlaps_trapezoid(x1, y1, x2, y2)
+
+        centroid_in_zone = self.vehicle_zone.point_in_trapezoid(current_pos[0], current_pos[1])
+
+        is_approaching, approach_rate = self.motion_analyzer.is_moving_toward_vehicle_zone(
+            history, self.vehicle_zone
+        )
         min_distance = self.vehicle_zone.distance_to_zone(current_pos[0], current_pos[1])
 
-        collision_prob = perspective_distance * 0.5
-
-        if is_inside:
-            collision_prob += 0.1
+        if centroid_in_zone:
+            collision_prob = perspective_distance * 0.5 + 0.45
+        elif bbox_in_zone:
+            collision_prob = perspective_distance * 0.5 + 0.25
         elif is_approaching:
-            collision_prob += 0.05
+            collision_prob = perspective_distance * 0.3 + 0.05
         else:
-            collision_prob *= 0.25
+            return None
 
         collision_frame = None
         collision_positions = []
 
-        if predicted_positions and is_approaching:
+        if predicted_positions and (bbox_in_zone or is_approaching):
             for i, pred_pos in enumerate(predicted_positions):
                 if self.vehicle_zone.point_in_trapezoid(pred_pos[0], pred_pos[1]):
                     if collision_frame is None:
                         collision_frame = i + 1
                     collision_positions.append(pred_pos)
-                    collision_prob += 0.15 * (1 - i / len(predicted_positions))
+                    collision_prob += 0.12 * (1 - i / len(predicted_positions))
 
         collision_prob = np.clip(collision_prob * self.risk_mult, 0, 1)
 
-        risk_level = self._calculate_risk_level(collision_prob, collision_frame, 
-                                                 is_approaching, perspective_distance, 
-                                                 min_distance)
+        risk_level = self._calculate_risk_level(
+            collision_prob, collision_frame,
+            is_approaching, perspective_distance, min_distance,
+        )
 
-        if collision_prob >= self.collision_threshold or is_inside:
+        if collision_prob >= self.collision_threshold or bbox_in_zone:
             return {
                 'pedestrian_id': pedestrian_id,
-                'collision_detected': collision_prob > 0.6 or (is_inside and perspective_distance > 0.35),
+                'collision_detected': centroid_in_zone or collision_prob > 0.65,
                 'collision_probability': collision_prob,
                 'collision_frame': collision_frame,
                 'collision_positions': collision_positions,
