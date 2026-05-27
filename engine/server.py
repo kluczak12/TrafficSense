@@ -66,7 +66,7 @@ def _draw_traj(frame, history, color=(0, 165, 255)):
         cv2.line(frame, pts[i - 1], pts[i], color, 2)
 
 
-def _draw_pred(frame, last, preds, color=(0, 0, 255)):
+def _draw_pred(frame, last, preds, color=(245, 175, 65)):
     pts = [(int(last[0]), int(last[1]))] + [(int(p[0]), int(p[1])) for p in preds]
     for i in range(1, len(pts)):
         cv2.line(frame, pts[i - 1], pts[i], color, 1, cv2.LINE_AA)
