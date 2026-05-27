@@ -3,13 +3,12 @@ services:
   data:
     build: ./data
     volumes:
-      - ./data/videos/annotations:/data/videos/annotations:ro
       - ./data/annotations:/data/annotations:ro
       - ./data/annotations_vehicle:/data/annotations_vehicle:ro
       - ./data/annotations_traffic:/data/annotations_traffic:ro
       - db_data:/data/db
     environment:
-      - ANNOTATIONS_DIR=/data/videos/annotations
+      - ANNOTATIONS_DIR=/data/annotations
     restart: on-failure
 
   engine:
