@@ -109,8 +109,7 @@ for vid in video_dirs:
                 out_path, cv2.VideoWriter_fourcc(*'mp4v'), TARGET_FPS, (w, h)
             )
             collision_detector = CollisionDetector(
-                h, w, vehicle_zone_type='trapez_lower',
-                warning_distance=350, collision_threshold=0.3
+                h, w, warning_distance=350, collision_threshold=0.3
             )
 
         # Mnożnik ryzyka dla bieżącej klatki

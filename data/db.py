@@ -35,8 +35,8 @@ class Db:
 
 def init_db(db_path):
     with sqlite3.connect(db_path) as conn:
-        c = conn.execute("PRAGMA foreign_keys = ON")
-        c.execute(
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute(
             """
             CREATE TABLE IF NOT EXISTS critical_events_logs
             (
@@ -44,5 +44,27 @@ def init_db(db_path):
                 date TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
                 type TEXT NOT NULL,           -- na razie przewidziane 'warning' i 'critical'
                 description TEXT NOT NULL
+            )
+        """)
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS video_env
+            (
+                video_id TEXT PRIMARY KEY,
+                env_mult REAL NOT NULL DEFAULT 1.0
+            )
+        """)
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS frame_annotations
+            (
+                video_id       TEXT    NOT NULL,
+                frame_id       INTEGER NOT NULL,
+                vehicle_action TEXT,
+                traffic_light  TEXT,
+                ped_crossing   INTEGER NOT NULL DEFAULT 0,
+                ped_sign       INTEGER NOT NULL DEFAULT 0,
+                stop_sign      INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (video_id, frame_id)
             )
         """)

@@ -1,78 +1,62 @@
-import xml.etree.ElementTree as ET
-from os.path import join, exists
-
-WEATHER_MULT = {'clear': 1.0, 'cloudy': 1.1, 'rain': 1.3, 'snow': 1.4}
-TIME_MULT = {'daytime': 1.0, 'nighttime': 1.3}
-VEHICLE_MULT = {
-    'stopped': 0.2, 'moving_slow': 0.4, 'moving_fast': 0.8,
-    'accelerating': 0.9, 'decelerating': 0.3,
-}
+import sqlite3
 
 
 class AnnotationManager:
-    def __init__(self, base_path):
-        self._main = join(base_path, 'annotations')
-        self._vehicle = join(base_path, 'annotations_vehicle')
-        self._traffic = join(base_path, 'annotations_traffic')
-        self._cache = {}
+    def __init__(self, db_path):
+        self._db_path = db_path
+        self._conn = None
+        self._env = {} # video_id -> env_mult
+        self._frames = {} # video_id -> {frame_id -> row dict}
+        self._loaded = set() # video_ids których klatki zostały już załadowane
+
+    def _connect(self):
+        if self._conn is None:
+            uri = f"file:{self._db_path}?mode=ro"
+            self._conn = sqlite3.connect(uri, uri=True)
+            self._conn.row_factory = sqlite3.Row
+        return self._conn
 
     def load(self, video_id):
-        if video_id in self._cache:
-            return self._cache[video_id]
+        # załadowanie informacji dla filmu video_id
+        if video_id in self._loaded:
+            return
+        conn = self._connect()
 
-        data = {'vehicle': {}, 'traffic': {}, 'env_mult': 1.0}
+        row = conn.execute(
+            "SELECT env_mult FROM video_env WHERE video_id = ?", (video_id,),
+        ).fetchone()
+        self._env[video_id] = row["env_mult"] if row else 1.0
 
-        veh_path = join(self._vehicle, f'{video_id}_vehicle.xml')
-        if exists(veh_path):
-            try:
-                for f in ET.parse(veh_path).getroot().findall('frame'):
-                    data['vehicle'][int(f.get('id'))] = f.get('action', 'unknown')
-            except Exception as e:
-                print(f"Vehicle annotation error {video_id}: {e}")
-
-        trf_path = join(self._traffic, f'{video_id}_traffic.xml')
-        if exists(trf_path):
-            try:
-                root = ET.parse(trf_path).getroot()
-                for f in root.findall('frame'):
-                    data['traffic'][int(f.get('id'))] = {
-                        'ped_crossing': int(f.get('ped_crossing', 0)),
-                        'ped_sign': int(f.get('ped_sign', 0)),
-                        'stop_sign': int(f.get('stop_sign', 0)),
-                        'traffic_light': f.get('traffic_light', 'n/a'),
-                    }
-            except Exception as e:
-                print(f"Traffic annotation error {video_id}: {e}")
-
-        main_path = join(self._main, f'{video_id}.xml')
-        if exists(main_path):
-            try:
-                attrs = ET.parse(main_path).getroot().find('./meta/task/video_attributes')
-                if attrs is not None:
-                    w = attrs.findtext('weather', 'clear').lower()
-                    t = attrs.findtext('time_of_day', 'daytime').lower()
-                    data['env_mult'] = WEATHER_MULT.get(w, 1.0) * TIME_MULT.get(t, 1.0)
-            except Exception as e:
-                print(f"Env annotation error {video_id}: {e}")
-
-        self._cache[video_id] = data
-        return data
+        frames = {}
+        for r in conn.execute(
+            "SELECT frame_id, vehicle_action, traffic_light, "
+            "       ped_crossing, ped_sign, stop_sign "
+            "FROM frame_annotations WHERE video_id = ?",
+            (video_id,),
+        ):
+            frames[r["frame_id"]] = {
+                "vehicle_action": r["vehicle_action"],
+                "traffic_light": r["traffic_light"],
+                "ped_crossing": r["ped_crossing"],
+                "ped_sign": r["ped_sign"],
+                "stop_sign": r["stop_sign"],
+            }
+        self._frames[video_id] = frames
+        self._loaded.add(video_id)
 
     def frame_risk_mult(self, video_id, frame_id):
-        # Łączny mnożnik ryzyka dla klatki: pogoda i pora dnia * ruch auta * otoczenie
-        data = self.load(video_id)
-        mult = data['env_mult']
+        # mnożnik ryzyka w danej klatce
+        if video_id not in self._loaded:
+            self.load(video_id)
 
-        action = data['vehicle'].get(frame_id, 'unknown')
-        # nie wiem czy to ma sens, na razie zakomentowane
-        # mult *= VEHICLE_MULT.get(action, 0.5)
+        mult = self._env.get(video_id, 1.0)
+        tr = self._frames.get(video_id, {}).get(frame_id, {})
 
-        tr = data['traffic'].get(frame_id, {})
-        if tr.get('traffic_light') == 'red':
+        if tr.get("traffic_light") == "red":
             mult *= 0.7
-        if tr.get('stop_sign'):
+        if tr.get("stop_sign"):
             mult *= 0.8
-        if tr.get('ped_crossing'):
+        if tr.get("ped_crossing"):
             mult *= 1.2
 
         return mult
