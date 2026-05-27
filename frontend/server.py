@@ -124,10 +124,21 @@ async def _stream_video(video_name, browser_ws, engine_ws, stop_event):
                     await asyncio.sleep(interval - elapsed)
                 continue
 
-            if FRAME_MAX_WIDTH and frame.shape[1] > FRAME_MAX_WIDTH:
+            if FRAME_MAX_WIDTH:
                 scale = FRAME_MAX_WIDTH / float(frame.shape[1])
                 new_h = int(frame.shape[0] * scale)
-                frame = cv2.resize(frame, (FRAME_MAX_WIDTH, new_h), interpolation=cv2.INTER_AREA)
+
+                interpolation = (
+                    cv2.INTER_AREA
+                    if scale < 1.0
+                    else cv2.INTER_LINEAR
+                )
+
+                frame = cv2.resize(
+                    frame,
+                    (FRAME_MAX_WIDTH, new_h),
+                    interpolation=interpolation,
+                )
 
             ok_enc, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, FRONTEND_JPEG_QUALITY])
             if not ok_enc:
