@@ -330,7 +330,7 @@ function formatLogDate(raw) {
 
 async function loadLogs() {
   try {
-    const r = await fetch("/logs");
+    const r = await fetch(`/logs?t=${Date.now()}`, { cache: "no-store" });
     const { logs } = await r.json();
     logListEl.innerHTML = "";
     logIds.clear();
@@ -430,6 +430,8 @@ stopBtn.onclick = () => {
   if (!safeSend({ action: "stop" })) return;
   setPlaying(false);
   setStatus("stopped");
+  // after stopping, fetch a final snapshot of logs (avoid cached response)
+  setTimeout(() => loadLogs(), 250);
 };
 
 setLogsSidebarCollapsed(true);
