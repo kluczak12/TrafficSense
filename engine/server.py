@@ -88,6 +88,7 @@ def _annotate(frame, frame_id, video_id, track_history, collision_detector):
     collision_detector.draw_vehicle_zone(frame, alpha=0.1)
 
     results = detect_pedestrians(frame)
+    risk_levels = {}
     count = 0
     if results[0].boxes.id is not None:
         boxes = results[0].boxes.xyxy.cpu().numpy()
@@ -110,8 +111,9 @@ def _annotate(frame, frame_id, video_id, track_history, collision_detector):
                 )
                 if info:
                     collision_detector.draw_collision_alert(frame, info)
+                    risk_levels[tid] = info.get("risk_level")
 
-    return frame
+    return frame, risk_levels
 
 
 @app.websocket("/ws")
@@ -121,6 +123,7 @@ async def ws_endpoint(ws: WebSocket):
     frame_id = 0
     track_history = defaultdict(lambda: deque(maxlen=HISTORY_LEN))
     collision_detector = None # inicjalizowany przy każdej klatce
+    last_risk_levels = {}
 
     try:
         while True:
@@ -140,10 +143,12 @@ async def ws_endpoint(ws: WebSocket):
                     frame_id = 0
                     track_history.clear()
                     collision_detector = None
+                    last_risk_levels.clear()
                     await ws.send_json({"type": "ready"})
                 elif action == "stop":
                     video_id = None
                     collision_detector = None
+                    last_risk_levels.clear()
                 continue
 
             # a binary oznacza klatkę
@@ -163,7 +168,22 @@ async def ws_endpoint(ws: WebSocket):
                     h, w, warning_distance=350, collision_threshold=0.3
                 )
 
-            annotated = _annotate(frame, frame_id, video_id, track_history, collision_detector)
+            annotated, current_risk_levels = _annotate(
+                frame, frame_id, video_id, track_history, collision_detector
+            )
+            for pedestrian_id, current_risk in current_risk_levels.items():
+                previous_risk = last_risk_levels.get(pedestrian_id)
+                if previous_risk and previous_risk != "critical" and current_risk == "critical":
+                    await ws.send_json(
+                        {
+                            "type": "pedestrian_state_alert",
+                            "pedestrian_id": pedestrian_id,
+                            "from": previous_risk,
+                            "to": current_risk,
+                            "frame_id": frame_id,
+                        }
+                    )
+                last_risk_levels[pedestrian_id] = current_risk
             frame_id += 1
 
             ok, buf = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY])
