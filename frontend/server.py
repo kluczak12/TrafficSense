@@ -16,6 +16,8 @@ from fastapi.responses import FileResponse
 
 VIDEO_DIR = os.environ.get("VIDEO_DIR", "/data/videos")
 ENGINE_WS = os.environ.get("ENGINE_WS", "ws://engine:8000/ws")
+FRAME_MAX_WIDTH = int(os.environ.get("FRAME_MAX_WIDTH", "800"))
+FRONTEND_JPEG_QUALITY = int(os.environ.get("FRONTEND_JPEG_QUALITY", "80"))
 
 app = FastAPI()
 
@@ -33,8 +35,6 @@ def list_videos():
 
 
 async def _stream_video(video_name, browser_ws, engine_ws, stop_event):
-    # czyta klatki z filmu, przesyła do engine, przerobione przekazuje do przeglądarki
-    # wyjście z funkcji następuje przy zakończeniu filmu lub ustawieniu flagi stop
     path = os.path.join(VIDEO_DIR, video_name)
     if not os.path.isfile(path):
         await browser_ws.send_json({"type": "error", "message": f"Video not found: {video_name}"})
@@ -46,13 +46,15 @@ async def _stream_video(video_name, browser_ws, engine_ws, stop_event):
         return
 
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    orig_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+    orig_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
     interval = 1.0 / fps
 
     await engine_ws.send(json.dumps({"action": "start", "video": video_name}))
     # czeka na gotowość engine
     ready = await engine_ws.recv()
 
-    await browser_ws.send_json({"type": "started", "video": video_name, "fps": fps})
+    await browser_ws.send_json({"type": "started", "video": video_name, "fps": fps, "width": orig_w, "height": orig_h})
 
     try:
         while not stop_event.is_set():
@@ -62,16 +64,27 @@ async def _stream_video(video_name, browser_ws, engine_ws, stop_event):
                 await browser_ws.send_json({"type": "ended", "video": video_name})
                 break
 
-            ok_enc, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            if FRAME_MAX_WIDTH and frame.shape[1] > FRAME_MAX_WIDTH:
+                scale = FRAME_MAX_WIDTH / float(frame.shape[1])
+                new_h = int(frame.shape[0] * scale)
+                frame = cv2.resize(frame, (FRAME_MAX_WIDTH, new_h), interpolation=cv2.INTER_AREA)
+
+            ok_enc, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, FRONTEND_JPEG_QUALITY])
             if not ok_enc:
                 continue
             await engine_ws.send(buf.tobytes())
 
             annotated = await engine_ws.recv()
             if isinstance(annotated, str):
-                # wiadomość kontrolna z engine, skip
+                try:
+                    await browser_ws.send_text(annotated)
+                except Exception:
+                    pass
                 continue
-            await browser_ws.send_text("F" + base64.b64encode(annotated).decode("ascii"))
+            try:
+                await browser_ws.send_bytes(annotated)
+            except Exception:
+                pass
 
             elapsed = time.perf_counter() - t0
             if elapsed < interval:

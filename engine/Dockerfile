@@ -12,7 +12,7 @@ RUN apt update && apt install -y \
     libxdmcp6 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+RUN pip install torch torchvision
 RUN pip install -r requirements.txt
 
 COPY annotation_loader.py .

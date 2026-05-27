@@ -66,16 +66,14 @@ function connect() {
   ws.onopen  = () => setStatus("connected");
   ws.onclose = () => { setStatus("disconnected"); setPlaying(false); setTimeout(connect, 1000); };
   ws.onerror = () => setStatus("error");
+  let lastBlobUrl = null;
   ws.onmessage = (e) => {
-    if (typeof e.data === "string" && e.data.startsWith("F")) {
-      frameEl.src = "data:image/jpeg;base64," + e.data.slice(1);
+    if (e.data instanceof Blob) {
+      if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+      lastBlobUrl = URL.createObjectURL(e.data);
+      frameEl.src = lastBlobUrl;
       return;
     }
-    let msg;
-    try { msg = JSON.parse(e.data); } catch { return; }
-    if (msg.type === "started")    setStatus(`playing ${msg.video}`);
-    else if (msg.type === "ended") setStatus(`ended ${msg.video}`);
-    else if (msg.type === "error") setStatus(`error: ${msg.message}`);
   };
 }
 
