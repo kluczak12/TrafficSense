@@ -7,13 +7,16 @@ services:
       - ./data/annotations_vehicle:/data/annotations_vehicle:ro
       - ./data/annotations_traffic:/data/annotations_traffic:ro
       - db_data:/data/db
+    environment:
+      - ANNOTATIONS_DIR=/data/annotations
     restart: on-failure
 
   engine:
     build: ./engine
     volumes:
-      - db_data:/data/db:ro
+      - db_data:/data/db
     environment:
+      - ANNOTATIONS_DB=/data/db/db.sqlite
       - EXPECTED_MODEL_HASH=f59b3d833e2ff32e194b5bb8e08d211dc7c5bdf144b90d2c8412c47ccfc83b36
     # ODKOMENTOWAĆ DO PREZENTACJI NA MOCNYM LAPKU
     # I USUNĄĆ --index-url... Z DOCKERFILE ENGINE
@@ -33,8 +36,10 @@ services:
     build: ./frontend
     volumes:
       - ./data/videos:/data/videos:ro
+      - db_data:/data/db:ro
     environment:
       - ENGINE_WS=ws://engine:8000/ws
+      - ANNOTATIONS_DB=/data/db/db.sqlite
     ports:
       - "3000:3000"
     depends_on:

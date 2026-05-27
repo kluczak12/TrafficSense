@@ -16,6 +16,7 @@ RUN pip install torch torchvision
 RUN pip install -r requirements.txt
 
 COPY annotation_loader.py .
+COPY event_logger.py .
 COPY collision_detection.py .
 COPY pedestrian_detection.py .
 COPY server.py .

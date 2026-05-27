@@ -20,6 +20,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from pedestrian_detection import detect_pedestrians
 from collision_detection import CollisionDetector
 from annotation_loader import AnnotationManager
+from event_logger import insert_log, should_log_state
 
 ANNOTATIONS_DB = os.environ.get("ANNOTATIONS_DB", "/data/db/db.sqlite")
 PRED_HORIZON = int(os.environ.get("PRED_HORIZON", "10"))
@@ -121,6 +122,7 @@ async def ws_endpoint(ws: WebSocket):
     await ws.accept()
     video_id = None
     frame_id = 0
+    log_description = ""
     track_history = defaultdict(lambda: deque(maxlen=HISTORY_LEN))
     collision_detector = None # inicjalizowany przy każdej klatce
     last_risk_levels = {}
@@ -144,11 +146,13 @@ async def ws_endpoint(ws: WebSocket):
                     track_history.clear()
                     collision_detector = None
                     last_risk_levels.clear()
+                    log_description = annotation_manager.log_description(video_id)
                     await ws.send_json({"type": "ready"})
                 elif action == "stop":
                     video_id = None
                     collision_detector = None
                     last_risk_levels.clear()
+                    log_description = ""
                 continue
 
             # a binary oznacza klatkę
@@ -171,18 +175,22 @@ async def ws_endpoint(ws: WebSocket):
             annotated, current_risk_levels = _annotate(
                 frame, frame_id, video_id, track_history, collision_detector
             )
+            description = log_description
             for pedestrian_id, current_risk in current_risk_levels.items():
                 previous_risk = last_risk_levels.get(pedestrian_id)
-                if previous_risk and previous_risk != "critical" and current_risk == "critical":
-                    await ws.send_json(
-                        {
-                            "type": "pedestrian_state_alert",
-                            "pedestrian_id": pedestrian_id,
-                            "from": previous_risk,
-                            "to": current_risk,
-                            "frame_id": frame_id,
-                        }
-                    )
+                if should_log_state(previous_risk, current_risk):
+                    entry = insert_log(ANNOTATIONS_DB, current_risk, description)
+                    await ws.send_json({"type": "pedestrian_state_log", **entry})
+                    if current_risk == "critical":
+                        await ws.send_json(
+                            {
+                                "type": "pedestrian_state_alert",
+                                "pedestrian_id": pedestrian_id,
+                                "from": previous_risk,
+                                "to": current_risk,
+                                "frame_id": frame_id,
+                            }
+                        )
                 last_risk_levels[pedestrian_id] = current_risk
             frame_id += 1
 

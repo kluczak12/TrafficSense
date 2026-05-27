@@ -39,6 +39,56 @@
   }
   .sidebar.collapsed { transform: translateX(calc(-1 * var(--sidebar-w))); }
 
+  .logs-sidebar {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: var(--sidebar-w);
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    transform: translateX(0);
+    transition: transform 180ms ease;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow);
+  }
+  .logs-sidebar.collapsed { transform: translateX(var(--sidebar-w)); }
+
+  .log-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+  }
+  .log-item {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--panel2);
+    font-size: 0.9em;
+  }
+  .log-item .log-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+    color: var(--muted);
+    font-size: 0.85em;
+  }
+  .log-type {
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .log-type.medium { color: #e6c84a; }
+  .log-type.high { color: #e6954a; }
+  .log-type.critical { color: #e64a4a; }
+  .log-desc { color: var(--text); line-height: 1.35; }
+  .log-empty { color: var(--muted); font-size: 0.9em; padding: 4px 0; }
+
   .side-header {
     padding: 12px 12px 10px;
     background: var(--panel2);
@@ -89,6 +139,20 @@
   }
   .panel-toggle.hidden { display: none; }
 
+  .logs-toggle {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    z-index: 20;
+    border-radius: 10px;
+    padding: 9px 12px;
+    width: auto;
+    background: rgba(34,34,34,0.75);
+    border: 1px solid rgba(255,255,255,0.12);
+    backdrop-filter: blur(10px);
+  }
+  .logs-toggle.hidden { display: none; }
+
   .critical-alert {
     position: absolute;
     top: 16px;
@@ -129,6 +193,7 @@
 <body>
 <div class="layout">
   <button id="panelToggle" class="panel-toggle hidden" type="button">Menu</button>
+  <button id="logsToggle" class="logs-toggle hidden" type="button">Logs</button>
   <div id="criticalAlert" class="critical-alert" role="alert" aria-live="assertive"></div>
 
   <aside id="sidebar" class="sidebar">
@@ -153,6 +218,18 @@
     </div>
   </aside>
 
+  <aside id="logsSidebar" class="logs-sidebar collapsed">
+    <div class="side-header">
+      <div class="brand">Logs</div>
+      <div class="spacer"></div>
+      <button id="hideLogsPanel" type="button" style="width:auto;">Hide</button>
+    </div>
+    <div class="side-body">
+      <ul id="logList" class="log-list"></ul>
+      <p id="logEmpty" class="log-empty">No events logged yet.</p>
+    </div>
+  </aside>
+
   <main><img id="frame" alt=""></main>
 </div>
 
@@ -167,9 +244,15 @@ const sidebar  = document.getElementById("sidebar");
 const hidePanelBtn = document.getElementById("hidePanel");
 const panelToggleBtn = document.getElementById("panelToggle");
 const criticalAlertEl = document.getElementById("criticalAlert");
+const logsSidebar = document.getElementById("logsSidebar");
+const hideLogsPanelBtn = document.getElementById("hideLogsPanel");
+const logsToggleBtn = document.getElementById("logsToggle");
+const logListEl = document.getElementById("logList");
+const logEmptyEl = document.getElementById("logEmpty");
 
 let ws = null;
 let criticalAlertTimer = null;
+const logIds = new Set();
 
 function setStatus(s) { statusEl.textContent = s; }
 function setPlaying(p) {
@@ -189,6 +272,75 @@ function setSidebarCollapsed(collapsed) {
 }
 hidePanelBtn.onclick = () => setSidebarCollapsed(true);
 panelToggleBtn.onclick = () => setSidebarCollapsed(false);
+
+function setLogsSidebarCollapsed(collapsed) {
+  if (collapsed) {
+    logsSidebar.classList.add("collapsed");
+    logsToggleBtn.classList.remove("hidden");
+  } else {
+    logsSidebar.classList.remove("collapsed");
+    logsToggleBtn.classList.add("hidden");
+  }
+}
+hideLogsPanelBtn.onclick = () => setLogsSidebarCollapsed(true);
+logsToggleBtn.onclick = () => setLogsSidebarCollapsed(false);
+
+function renderLogEntry(entry) {
+  const id = entry.id;
+  if (id != null && logIds.has(id)) return;
+  if (id != null) logIds.add(id);
+
+  const li = document.createElement("li");
+  li.className = "log-item";
+  li.dataset.logId = id ?? "";
+
+  const meta = document.createElement("div");
+  meta.className = "log-meta";
+  const typeEl = document.createElement("span");
+  typeEl.className = `log-type ${entry.type || ""}`;
+  typeEl.textContent = entry.type || "unknown";
+  const dateEl = document.createElement("span");
+  dateEl.textContent = formatLogDate(entry.date);
+  meta.append(typeEl, dateEl);
+
+  const desc = document.createElement("div");
+  desc.className = "log-desc";
+  desc.textContent = entry.description || "";
+
+  li.append(meta, desc);
+  logListEl.appendChild(li);
+  logEmptyEl.style.display = logListEl.children.length ? "none" : "block";
+}
+
+function formatLogDate(raw) {
+  if (!raw) return "";
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toLocaleString();
+  }
+
+  // Backward compatibility for legacy SQLite format: YYYY-MM-DD HH:MM:SS
+  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+  const parsedAsUtc = new Date(`${normalized}Z`);
+  if (!Number.isNaN(parsedAsUtc.getTime())) {
+    return parsedAsUtc.toLocaleString();
+  }
+  return raw;
+}
+
+async function loadLogs() {
+  try {
+    const r = await fetch(`/logs?t=${Date.now()}`, { cache: "no-store" });
+    const { logs } = await r.json();
+    logListEl.innerHTML = "";
+    logIds.clear();
+    for (const entry of (logs || [])) renderLogEntry(entry);
+    logEmptyEl.style.display = logListEl.children.length ? "none" : "block";
+  } catch (_) {
+    logEmptyEl.textContent = "Could not load logs.";
+    logEmptyEl.style.display = "block";
+  }
+}
 
 function showCriticalAlert(message) {
   criticalAlertEl.textContent = message;
@@ -212,7 +364,7 @@ async function loadVideos() {
   }
   if (!videos.length) {
     const opt = document.createElement("option");
-    opt.textContent = "(nie znaleziono filmów)";
+    opt.textContent = "(no videos found)";
     opt.disabled = true;
     videoSel.appendChild(opt);
     startBtn.disabled = true;
@@ -229,7 +381,11 @@ function connect() {
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
   ws = new WebSocket(`${proto}//${location.host}/ws`);
   ws.onopen  = () => setStatus("connected");
-  ws.onclose = () => { setStatus("disconnected"); setPlaying(false); setTimeout(connect, 1000); };
+  ws.onclose = () => {
+    setStatus("disconnected");
+    setPlaying(false);
+    setTimeout(connect, 1000);
+  };
   ws.onerror = () => setStatus("error");
   let lastBlobUrl = null;
   ws.onmessage = (e) => {
@@ -255,9 +411,11 @@ function connect() {
       if (msg?.type === "error") {
         setStatus(`error: ${msg.message || "unknown"}`);
       }
-      if (msg?.type === "pedestrian_state_alert" && msg?.to === "critical" && msg?.from !== "critical") {
-        const ped = msg.pedestrian_id ?? "?";
-        showCriticalAlert(`WARNING: high risk of collision!`);
+      if (msg?.type === "pedestrian_state_log") {
+        loadLogs();
+      }
+      if (msg?.type === "pedestrian_state_alert" && msg?.to === "critical") {
+        showCriticalAlert("WARNING: high risk of collision!");
       }
     } catch (_) {
     }
@@ -272,9 +430,13 @@ stopBtn.onclick = () => {
   if (!safeSend({ action: "stop" })) return;
   setPlaying(false);
   setStatus("stopped");
+  // after stopping, fetch a final snapshot of logs (avoid cached response)
+  setTimeout(() => loadLogs(), 250);
 };
 
+setLogsSidebarCollapsed(true);
 loadVideos();
+loadLogs();
 connect();
 </script>
 </body>
