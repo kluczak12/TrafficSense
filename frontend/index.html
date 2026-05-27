@@ -89,6 +89,27 @@
   }
   .panel-toggle.hidden { display: none; }
 
+  .critical-alert {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 30;
+    padding: 12px 18px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(179, 20, 20, 0.95);
+    color: #fff;
+    font-weight: 600;
+    box-shadow: var(--shadow);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease;
+  }
+  .critical-alert.visible {
+    opacity: 1;
+  }
+
   main {
     position: absolute;
     inset: 0;
@@ -108,6 +129,7 @@
 <body>
 <div class="layout">
   <button id="panelToggle" class="panel-toggle hidden" type="button">Menu</button>
+  <div id="criticalAlert" class="critical-alert" role="alert" aria-live="assertive"></div>
 
   <aside id="sidebar" class="sidebar">
     <div class="side-header">
@@ -144,8 +166,10 @@ const frameEl  = document.getElementById("frame");
 const sidebar  = document.getElementById("sidebar");
 const hidePanelBtn = document.getElementById("hidePanel");
 const panelToggleBtn = document.getElementById("panelToggle");
+const criticalAlertEl = document.getElementById("criticalAlert");
 
 let ws = null;
+let criticalAlertTimer = null;
 
 function setStatus(s) { statusEl.textContent = s; }
 function setPlaying(p) {
@@ -165,6 +189,17 @@ function setSidebarCollapsed(collapsed) {
 }
 hidePanelBtn.onclick = () => setSidebarCollapsed(true);
 panelToggleBtn.onclick = () => setSidebarCollapsed(false);
+
+function showCriticalAlert(message) {
+  criticalAlertEl.textContent = message;
+  criticalAlertEl.classList.add("visible");
+  if (criticalAlertTimer) clearTimeout(criticalAlertTimer);
+  criticalAlertTimer = setTimeout(() => {
+    criticalAlertEl.classList.remove("visible");
+    criticalAlertEl.textContent = "";
+    criticalAlertTimer = null;
+  }, 5000);
+}
 
 async function loadVideos() {
   const r = await fetch("/videos");
@@ -219,6 +254,10 @@ function connect() {
       }
       if (msg?.type === "error") {
         setStatus(`error: ${msg.message || "unknown"}`);
+      }
+      if (msg?.type === "pedestrian_state_alert" && msg?.to === "critical" && msg?.from !== "critical") {
+        const ped = msg.pedestrian_id ?? "?";
+        showCriticalAlert(`WARNING: high risk of collision!`);
       }
     } catch (_) {
     }
