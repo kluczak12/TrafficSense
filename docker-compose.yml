@@ -20,13 +20,13 @@ services:
       - EXPECTED_MODEL_HASH=f59b3d833e2ff32e194b5bb8e08d211dc7c5bdf144b90d2c8412c47ccfc83b36
     # ODKOMENTOWAĆ DO PREZENTACJI NA MOCNYM LAPKU
     # I USUNĄĆ --index-url... Z DOCKERFILE ENGINE
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
     depends_on:
       data:
         condition: service_completed_successfully
