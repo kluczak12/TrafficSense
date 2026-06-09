@@ -23,7 +23,7 @@ if [ "$success" = false ]; then
     exit 1
 fi
 
-python test_endpoints.py "localhost:3000"
+python3 test_endpoints.py "localhost:3000"
 exit_code=$?
 
 echo -e "\033[0;90mTearing down TrafficSense stack...\033[0m"
