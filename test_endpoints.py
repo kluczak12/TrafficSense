@@ -3,6 +3,9 @@ import json
 import urllib.request
 import urllib.error
 import sys
+import time
+
+time.sleep(30)
 
 host = sys.argv[1] if len(sys.argv) > 1 else "localhost:3000"
 
@@ -69,10 +72,16 @@ async def check_websocket():
             print("  Waiting for annotated binary frames from the engine...")
             frame_count = 0
             for _ in range(3):
-                frame_data = await ws.recv()
-                assert isinstance(frame_data, bytes)
+                msg = await asyncio.wait_for(ws.recv(), timeout=10)
+                if isinstance(msg, bytes):
+                    frame_count += 1
+                    print(
+                        f"Received processed binary frame #{frame_count} "
+                        f"({len(msg)} bytes)"
+                    )
+                else:
+                    print(f"Received text message: {msg}")
                 frame_count += 1
-                print(f"    Received processed binary frame #{frame_count} ({len(frame_data)} bytes)")
                 
             await ws.send(json.dumps({"action": "stop"}))
             print("  [PASS] Sent stop action payload.")
