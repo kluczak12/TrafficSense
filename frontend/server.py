@@ -20,7 +20,7 @@ ANNOTATIONS_DB = os.environ.get("ANNOTATIONS_DB", "/data/db/db.sqlite")
 FRAME_MAX_WIDTH = int(os.environ.get("FRAME_MAX_WIDTH", "1600"))
 FRONTEND_JPEG_QUALITY = int(os.environ.get("FRONTEND_JPEG_QUALITY", "80"))
 MAX_IN_FLIGHT = int(os.environ.get("MAX_IN_FLIGHT", "2"))
-FRAME_SKIP_COEFF = float(os.environ.get("FRAME_SKIP_COEFF", "0.33"))
+FRAME_SKIP_COEFF = float(os.environ.get("FRAME_SKIP_COEFF", "0.5"))
 
 app = FastAPI()
 
